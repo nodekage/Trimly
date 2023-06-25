@@ -19,19 +19,26 @@ app.get('/', (req, res) => {
 })
 
 
-app.post('/shortUrls', (req, res) => {
+app.post('/shortUrls', async (req, res) => {
     let longUrl = req.body.fullUrl
     let customUrl = req.body.customUrl
 
     console.log( longUrl , customUrl)
 
-
     if (!customUrl) {
         let shortenedUrl = generateShortUrl(longUrl);
-        console.log ("trim.ly/" + shortenedUrl)
+        let mainShortenedUrl =  "trim.ly/" + shortenedUrl
+        await ShortUrl.create({ full: req.body.fullUrl,
+            short: mainShortenedUrl
+         })
+         console.log(mainShortenedUrl)
     } else {
         let shortenedUrl = customUrl;
-        console.log("trim.ly/" + shortenedUrl)
+        let mainShortenedUrl =  "trim.ly/" + shortenedUrl
+        await ShortUrl.create({ full: req.body.fullUrl,
+            short: mainShortenedUrl
+         })
+        console.log(mainShortenedUrl)
     }
 
     res.redirect('/')
