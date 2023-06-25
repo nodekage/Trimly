@@ -1,6 +1,7 @@
 const express = require('express')
 const app = express()
 const ShortUrl = require('./models/shortUrl')
+const shortId = require('shortid')
 
 
 require('dotenv').config();
@@ -24,12 +25,16 @@ app.post('/shortUrls', (req, res) => {
 
     console.log( longUrl , customUrl)
 
+
     if (!customUrl) {
-        console.log("NO CUSTOM NAME")
+        let shortenedUrl = generateShortUrl(longUrl);
+        console.log ("trim.ly/" + shortenedUrl)
+    } else {
+        let shortenedUrl = customUrl;
+        console.log("trim.ly/" + shortenedUrl)
     }
 
     res.redirect('/')
-
 })
 
 
@@ -39,3 +44,16 @@ app.listen(PORT, () => {
 })
 
 
+function generateShortUrl(longUrl) {
+
+    // Logic for generating the shortened URL
+    // You can use a library or custom logic here
+    // For simplicity, let's assume it's a random 6-character alphanumeric string
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let shortenedUrl = '';
+    for (let i = 0; i < 6; i++) {
+      const randomIndex = Math.floor(Math.random() * chars.length);
+      shortenedUrl += chars.charAt(randomIndex);
+    }
+    return shortenedUrl;
+  }
