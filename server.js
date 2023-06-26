@@ -6,6 +6,11 @@ const shortId = require('shortid');
 const NodeCache = require('node-cache');
 const cache = new NodeCache();
 const rateLimit = require('express-rate-limit');
+const QRCode = require('qrcode');
+const fs = require('fs');
+const { promisify } = require('util');
+const writeFileAsync = promisify(fs.writeFile);
+
 
 require('dotenv').config();
 require('./db/mongoDb').connectToMongoDB();
@@ -41,7 +46,8 @@ app.get('/', async (req, res) => {
     req.session.userId = userId;
   }
 
-  let shortUrls = cache.get(userId);
+  let shortUrls = await ShortUrl.find({ userId });
+  console.log(shortUrls + "mamamia")
 
   if (!shortUrls) {
     shortUrls = await ShortUrl.find({ userId });
@@ -65,7 +71,8 @@ app.get('/:test', async (req, res) => {
   console.log(shortUrl.full);
 
   shortUrl.clicks++;
-  shortUrl.save();
+  await shortUrl.save();
+  cache.set(req.session.userId, shortUrl); // Update the cache with the modified shortUrl object
 
   res.redirect(shortUrl.full);
 });
@@ -87,12 +94,29 @@ app.post('/shortUrls', async (req, res) => {
   if (!customUrl) {
     let shortenedUrl = generateShortUrl(longUrl);
     let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
+
+  // Generate the QR code
+  const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
+  console.log(qrCodeImageBuffer)
+
+
     await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
+
+      // Save the QR code image to the database
+      await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
     console.log(mainShortenedUrl);
   } else {
     let shortenedUrl = customUrl;
     let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
+        
+  // Generate the QR code
+  const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
+
+
     await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
+
+      // Save the QR code image to the database
+      await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
     console.log(mainShortenedUrl);
   }
 
@@ -115,3 +139,38 @@ function generateShortUrl(longUrl) {
   }
   return shortenedUrl;
 }
+
+async function generateQRCode(text) {
+  try {
+    const qrCodeImageBuffer = await QRCode.toBuffer(text);
+    console.log('QR code generated successfully');
+    return qrCodeImageBuffer;
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    return null;
+  }
+}
+
+
+async function saveQRCodeToDatabase(qrCodeImageBuffer, shortUrl, userId) {
+  try {
+    if (qrCodeImageBuffer) {
+      // Convert the Buffer to base64 encoded string
+      const qrCodeImageBase64 = qrCodeImageBuffer.toString('base64');
+
+      // Save the QR code image to the database
+      const result = await ShortUrl.updateOne(
+        { short: shortUrl, userId: userId },
+        { qrCode: qrCodeImageBase64 }
+      );
+
+      console.log('Update result:', result);
+    } else {
+      console.log('QR code image buffer is null');
+    }
+  } catch (error) {
+    console.error('Error saving QR code to the database:', error);
+  }
+}
+
+

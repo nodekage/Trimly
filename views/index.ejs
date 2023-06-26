@@ -24,6 +24,7 @@
                 <th>Full Url</th>
                 <th>Short Url</th>
                 <th>Clicks</th>
+                <th>QR Code</th>
             </tr>
         </thead>
         <tbody>
@@ -32,6 +33,14 @@
                     <td><a href="<%= shortUrl.full %>"><%= shortUrl.full %></a></td>
                     <td><a href="<%= shortUrl.short %>"><%= shortUrl.short %></a></td>
                     <td><%= shortUrl.clicks %></td>
+                    <td>
+                        <% if (shortUrl.qrCode) { %>
+                            <img src="data:image/png;base64,<%= shortUrl.qrCode %>" alt="QR Code" />
+                            <a href="data:image/png;base64,<%= shortUrl.qrCode %>" download>Download QR Code</a>
+                        <% } else { %>
+                            No QR Code available
+                        <% } %>
+                    </td>
                 </tr>
             <% }) %>
         </tbody>

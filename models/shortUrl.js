@@ -17,7 +17,11 @@ const shortUrlSchema = new mongoose.Schema({
     userId: {
         type: String,
         required: true,
-    }
+    },
+    qrCode: {
+        type: String,
+        default: null,
+      }
 })
 
 
