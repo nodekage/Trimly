@@ -3,6 +3,9 @@ const app = express();
 const session = require('express-session');
 const ShortUrl = require('./models/shortUrl');
 const shortId = require('shortid');
+const NodeCache = require('node-cache');
+const cache = new NodeCache();
+const rateLimit = require('express-rate-limit');
 
 require('dotenv').config();
 require('./db/mongoDb').connectToMongoDB();
@@ -14,6 +17,14 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.set('view engine', 'ejs');
 
+// Rate limiting middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // maximum of 100 requests per windowMs
+});
+
+app.use(limiter);
+
 // Session setup
 app.use(
   session({
@@ -24,7 +35,19 @@ app.use(
 );
 
 app.get('/', async (req, res) => {
-  const shortUrls = await ShortUrl.find({ userId: req.session.userId });
+  let userId = req.session.userId;
+  if (!userId) {
+    userId = shortId.generate();
+    req.session.userId = userId;
+  }
+
+  let shortUrls = cache.get(userId);
+
+  if (!shortUrls) {
+    shortUrls = await ShortUrl.find({ userId });
+    cache.set(userId, shortUrls);
+  }
+
   res.render('index', { shortUrls });
 });
 
@@ -72,6 +95,9 @@ app.post('/shortUrls', async (req, res) => {
     await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
     console.log(mainShortenedUrl);
   }
+
+  // Clear the cache for the user to ensure fresh data is fetched
+  cache.del(userId);
 
   res.redirect('/');
 });
