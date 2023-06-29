@@ -98,7 +98,7 @@ app.get('/', async (req, res) => {
   }
 
   let shortUrls = await ShortUrl.find({ userId });
-  console.log(shortUrls + "mamamia")
+  // console.log(shortUrls + "mamamia")
 
   if (!shortUrls) {
     shortUrls = await ShortUrl.find({ userId });
@@ -216,38 +216,41 @@ app.post('/shortUrls', async (req, res) => {
     req.session.userId = userId;
   }
 
-  if (!customUrl) {
-    let shortenedUrl = generateShortUrl(longUrl);
-    let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
+  if (customUrl) {
+    // Check if the custom URL already exists
+    const existingShortUrl = await ShortUrl.findOne({ short: customUrl });
 
-    // Generate the QR code
-    const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
-    console.log(qrCodeImageBuffer);
-
-    await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
-
-    // Save the QR code image to the database
-    await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
-    console.log(mainShortenedUrl);
-  } else {
-    let shortenedUrl = customUrl;
-    let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
-
-    // Generate the QR code
-    const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
-
-    await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
-
-    // Save the QR code image to the database
-    await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
-    console.log(mainShortenedUrl);
+    if (existingShortUrl) {
+      console.log("hsfk")
+      return res.status(409).json({ error: 'Custom URL already exists' });
+    }
   }
+
+  let shortenedUrl;
+  if (!customUrl) {
+    shortenedUrl = generateShortUrl(longUrl);
+  } else {
+    shortenedUrl = customUrl;
+  }
+
+  let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
+
+  // Generate the QR code
+  const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
+  console.log(qrCodeImageBuffer);
+
+  await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
+
+  // Save the QR code image to the database
+  await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
+  console.log(mainShortenedUrl);
 
   // Clear the cache for the user to ensure fresh data is fetched
   cache.del(userId);
 
   res.redirect('/');
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running successfully on port ${PORT}`);
