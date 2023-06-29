@@ -237,13 +237,13 @@ app.post('/shortUrls', async (req, res) => {
 
   // Generate the QR code
   const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
-  console.log(qrCodeImageBuffer);
+  // console.log(qrCodeImageBuffer);
 
   await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
 
   // Save the QR code image to the database
   await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
-  console.log(mainShortenedUrl);
+  // console.log(mainShortenedUrl);
 
   // Clear the cache for the user to ensure fresh data is fetched
   cache.del(userId);
@@ -269,7 +269,7 @@ function generateShortUrl(longUrl) {
 async function generateQRCode(text) {
   try {
     const qrCodeImageBuffer = await QRCode.toBuffer(text);
-    console.log('QR code generated successfully');
+    // console.log('QR code generated successfully');
     return qrCodeImageBuffer;
   } catch (error) {
     console.error('Error generating QR code:', error);
@@ -289,9 +289,9 @@ async function saveQRCodeToDatabase(qrCodeImageBuffer, shortUrl, userId) {
         { qrCode: qrCodeImageBase64 }
       );
 
-      console.log('Update result:', result);
+      // console.log('Update result:', result);
     } else {
-      console.log('QR code image buffer is null');
+      // console.log('QR code image buffer is null');
     }
   } catch (error) {
     console.error('Error saving QR code to the database:', error);

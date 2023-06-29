@@ -67,11 +67,10 @@ To create a short URL, send a POST request to http://localhost:8900/shortUrls wi
 
 02. Start the server:
 
-   ```bash
-   {
-  "fullUrl": "https://example.com/long-url",
-  "customUrl": "custom"
-    }
+   
+   "fullUrl": "https://example.com/long-url",
+   "customUrl": "custom"
+    
 
 Replace the fullUrl and customUrl values with your desired URLs. If customUrl is not provided, a random short URL will be generated.
 
