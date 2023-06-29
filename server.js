@@ -7,10 +7,11 @@ const NodeCache = require('node-cache');
 const cache = new NodeCache();
 const rateLimit = require('express-rate-limit');
 const QRCode = require('qrcode');
-const fs = require('fs');
+const fs = require('fs-extra');
 const { promisify } = require('util');
 const writeFileAsync = promisify(fs.writeFile);
-
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 
 require('dotenv').config();
 require('./db/mongoDb').connectToMongoDB();
@@ -39,6 +40,56 @@ app.use(
   })
 );
 
+// Define Swagger options and create Swagger specification
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'URL Shortener API',
+      version: '1.0.0',
+      description: 'API endpoints for URL shortening service',
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+      },
+    ],
+  },
+  apis: ['./server.js'],
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Enable JSON and URL-encoded parsing
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+// Serve Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+/**
+ * @swagger
+ * tags:
+ *   name: URL Shortener
+ *   description: API endpoints for URL shortening service
+ */
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Get all short URLs for the user
+ *     tags: [URL Shortener]
+ *     responses:
+ *       200:
+ *         description: Returns an array of short URLs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ShortUrl'
+ */
 app.get('/', async (req, res) => {
   let userId = req.session.userId;
   if (!userId) {
@@ -57,6 +108,23 @@ app.get('/', async (req, res) => {
   res.render('index', { shortUrls });
 });
 
+/**
+ * @swagger
+ * /{test}:
+ *   get:
+ *     summary: Redirect to the full URL associated with the short URL
+ *     tags: [URL Shortener]
+ *     parameters:
+ *       - in: path
+ *         name: test
+ *         required: true
+ *         description: Short URL identifier
+ *         schema:
+ *           type: string
+ *     responses:
+ *       302:
+ *         description: Redirects to the full URL
+ */
 app.get('/:test', async (req, res) => {
   const shortUrl = await ShortUrl.findOne({
     short: req.params.test,
@@ -77,6 +145,63 @@ app.get('/:test', async (req, res) => {
   res.redirect(shortUrl.full);
 });
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CreateShortUrlRequest:
+ *       type: object
+ *       properties:
+ *         fullUrl:
+ *           type: string
+ *           description: The original URL to be shortened
+ *         customUrl:
+ *           type: string
+ *           description: Optional custom short URL
+ *       required:
+ *         - fullUrl
+ *       example:
+ *         fullUrl: https://example.com/long-url
+ *         customUrl: custom
+ *
+ *     ShortUrl:
+ *       type: object
+ *       properties:
+ *         full:
+ *           type: string
+ *           description: The full URL
+ *         short:
+ *           type: string
+ *           description: The short URL
+ *         userId:
+ *           type: string
+ *           description: The user ID associated with the URL
+ *         clicks:
+ *           type: number
+ *           description: The number of clicks on the short URL
+ *       example:
+ *         full: https://example.com/long-url
+ *         short: trim.ly/abc123
+ *         userId: user123
+ *         clicks: 10
+ */
+
+/**
+ * @swagger
+ * /shortUrls:
+ *   post:
+ *     summary: Create a short URL
+ *     tags: [URL Shortener]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateShortUrlRequest'
+ *     responses:
+ *       302:
+ *         description: Redirects to the home page
+ */
 app.post('/shortUrls', async (req, res) => {
   let longUrl = req.body.fullUrl;
   let customUrl = req.body.customUrl;
@@ -95,28 +220,26 @@ app.post('/shortUrls', async (req, res) => {
     let shortenedUrl = generateShortUrl(longUrl);
     let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
 
-  // Generate the QR code
-  const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
-  console.log(qrCodeImageBuffer)
-
+    // Generate the QR code
+    const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
+    console.log(qrCodeImageBuffer);
 
     await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
 
-      // Save the QR code image to the database
-      await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
+    // Save the QR code image to the database
+    await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
     console.log(mainShortenedUrl);
   } else {
     let shortenedUrl = customUrl;
     let mainShortenedUrl = 'trim.ly.' + shortenedUrl;
-        
-  // Generate the QR code
-  const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
 
+    // Generate the QR code
+    const qrCodeImageBuffer = await generateQRCode(mainShortenedUrl);
 
     await ShortUrl.create({ full: req.body.fullUrl, short: mainShortenedUrl, userId });
 
-      // Save the QR code image to the database
-      await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
+    // Save the QR code image to the database
+    await saveQRCodeToDatabase(qrCodeImageBuffer, mainShortenedUrl, userId);
     console.log(mainShortenedUrl);
   }
 
@@ -151,7 +274,6 @@ async function generateQRCode(text) {
   }
 }
 
-
 async function saveQRCodeToDatabase(qrCodeImageBuffer, shortUrl, userId) {
   try {
     if (qrCodeImageBuffer) {
@@ -172,5 +294,3 @@ async function saveQRCodeToDatabase(qrCodeImageBuffer, shortUrl, userId) {
     console.error('Error saving QR code to the database:', error);
   }
 }
-
-
