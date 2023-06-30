@@ -78,10 +78,12 @@ The API will respond with a redirect to the home page after successfully creatin
 
 You can click on the short URL to be redirected to the original long URL.
 
-Access the API documentation at http://localhost:8900/api-docs for more details on the API endpoints.
+Access the API documentation at https://trim1y.onrender.com/api-docs for more details on the API endpoints.
+
 
 ## Contributing
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
 
 ## License
 This project is licensed under the MIT License.
